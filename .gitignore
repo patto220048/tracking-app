@@ -1,0 +1,37 @@
+# Hệ điều hành
+.DS_Store
+Thumbs.db
+
+# Node.js / React / Tauri
+node_modules/
+dist/
+dist-ssr/
+*.local
+desktop/node_modules/
+desktop/dist/
+desktop/src-tauri/target/
+desktop/src-tauri/gen/
+
+# Rust
+target/
+
+# C++ & CMake (Không đẩy file Build và DLL lên Git)
+core/build/
+core/out/
+*.dll
+*.lib
+*.exp
+*.ilk
+*.pdb
+
+# Python & Mô hình AI (Không đẩy file ONNX siêu nặng lên Git)
+__pycache__/
+*.pyc
+models/
+scripts/models/
+*.onnx
+
+# Media test
+*.mp4
+*.mkv
+*.avi
