@@ -1,22 +1,36 @@
 import { useEffect, useRef } from "react";
 import { MonitorPlay } from "lucide-react";
+import { ROISelection } from "./ROISelection";
+import type { BoundingBox } from "./ROISelection";
 
 interface VideoPlayerProps {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   videoSrc: string | null;
+  isLoaded: boolean;
+  videoWidth: number;
+  videoHeight: number;
+  isROIToolActive: boolean;
+  currentROI: BoundingBox | null;
   onLoadedMetadata: () => void;
   onTimeUpdate: () => void;
   onEnded: () => void;
+  onROISelected: (roi: BoundingBox) => void;
 }
 
 export function VideoPlayer({
   videoRef,
   canvasRef,
   videoSrc,
+  isLoaded,
+  videoWidth,
+  videoHeight,
+  isROIToolActive,
+  currentROI,
   onLoadedMetadata,
   onTimeUpdate,
   onEnded,
+  onROISelected,
 }: VideoPlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -49,10 +63,22 @@ export function VideoPlayer({
 
       {/* Canvas hiển thị frame */}
       {videoSrc ? (
-        <canvas
-          ref={canvasRef}
-          className="video-canvas"
-        />
+        <>
+          <canvas
+            ref={canvasRef}
+            className="video-canvas"
+          />
+          {/* ROI Selection overlay */}
+          <ROISelection
+            canvasRef={canvasRef}
+            isActive={isROIToolActive}
+            isLoaded={isLoaded}
+            videoWidth={videoWidth}
+            videoHeight={videoHeight}
+            onROISelected={onROISelected}
+            currentROI={currentROI}
+          />
+        </>
       ) : (
         <div className="video-placeholder">
           <MonitorPlay size={48} className="linear-text-muted" style={{ opacity: 0.15, marginBottom: "16px" }} />
