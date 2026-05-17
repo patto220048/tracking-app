@@ -11,7 +11,7 @@ Dự án **Lock-on Tracking + Speed Ramp** đa nền tảng, sử dụng AI Nano
 | Module | Tiến độ | Trạng thái |
 |--------|---------|------------|
 | 🔧 **Core Engine (C++)** | ██████████ 100% | ✅ Hoàn thành |
-| 🖥️ **Desktop App (Tauri + React)** | █████░░░░░ 50% | 🔨 Đang phát triển |
+| 🖥️ **Desktop App (Tauri + React)** | ███████░░░ 70% | 🔨 Đang phát triển |
 | 🐍 **Python Prototypes** | ██████████ 100% | ✅ Hoàn thành |
 | 📱 **Mobile App** | ░░░░░░░░░░ 0% | ⏳ Chưa bắt đầu |
 | 📝 **Documentation** | ██████████ 100% | ✅ Hoàn thành |
@@ -29,9 +29,9 @@ Dự án **Lock-on Tracking + Speed Ramp** đa nền tảng, sử dụng AI Nano
 
 ### 2. Rust FFI Bridge (Tauri Backend)
 - [x] [tracking_bridge.rs](file:///c:/ae-tracking-video-app/desktop/src-tauri/src/tracking_bridge.rs) — Load DLL bằng `libloading`, gọi C-ABI functions
-- [x] [lib.rs](file:///c:/ae-tracking-video-app/desktop/src-tauri/src/lib.rs) — Tauri commands: `init_ai_engine`, `get_video_metadata`
+- [x] [lib.rs](file:///c:/ae-tracking-video-app/desktop/src-tauri/src/lib.rs) — Tauri commands: `init_ai_engine`, `get_video_metadata`, `start_tracking`, `process_frame`
 - [x] `AppState` với `Mutex<Option<TrackingBridge>>` cho thread-safe state
-- [x] `Drop` implementation để tự giải phóng bộ nhớ C++
+- [x] Convert RGBA -> RGB trực tiếp trong Rust để tối ưu hiệu suất
 - [x] Plugin: `tauri-plugin-dialog`, `tauri-plugin-fs`, `tauri-plugin-opener`
 
 ### 3. Python Prototypes
@@ -40,16 +40,12 @@ Dự án **Lock-on Tracking + Speed Ramp** đa nền tảng, sử dụng AI Nano
 - [x] Thuật toán: EMA smoothing, translate + zoom affine transform
 - [x] ONNX Models đã có sẵn trong `scripts/models/`
 
-### 4. Desktop UI — Video Pipeline + Player ✨ NEW
-- [x] [useVideoPlayer.ts](file:///c:/ae-tracking-video-app/desktop/src/hooks/useVideoPlayer.ts) — Custom hook quản lý toàn bộ video state
-- [x] [VideoPlayer.tsx](file:///c:/ae-tracking-video-app/desktop/src/components/VideoPlayer.tsx) — Hidden `<video>` + Canvas rendering
-- [x] [PlayerControls.tsx](file:///c:/ae-tracking-video-app/desktop/src/components/PlayerControls.tsx) — Play/Pause, Stop, timecode HH:MM:SS:FF, speed, volume
-- [x] [Timeline.tsx](file:///c:/ae-tracking-video-app/desktop/src/components/Timeline.tsx) — Draggable playhead, time ruler, zoom, click-to-seek
-- [x] [App.tsx](file:///c:/ae-tracking-video-app/desktop/src/App.tsx) — Layout NLE hoàn chỉnh với 5 vùng tích hợp
-- [x] [App.css](file:///c:/ae-tracking-video-app/desktop/src/App.css) — CSS hoàn chỉnh theo Linear dark aesthetic
-- [x] Import Video qua Tauri file dialog + asset protocol
-- [x] Inspector panel hiển thị metadata (tên file, resolution, size, duration)
-- [x] `getFrameData()` sẵn sàng cho tracking integration
+### 4. Desktop UI — Video Pipeline + Tracking ✨ NEW
+- [x] **Video Pipeline**: Import Video, ẩn thẻ `<video>`, render lên `<canvas>`, điều khiển playback (play/pause/seek)
+- [x] **ROI Selection**: Công cụ vẽ bounding box, layer overlay tương tác, auto resize/scale tọa độ
+- [x] **Tracking Integration**: Trích xuất frame RGBA liên tục bằng `requestAnimationFrame`, gửi qua IPC, render crosshair (Target) bám theo tọa độ tracking
+- [x] **UI & Inspector**: Thiết kế Linear-style, metadata hiển thị, thao tác bằng phím tắt (V/C/Space/Esc)
+- [x] **Timeline**: Thanh scrubber kéo thời gian, hiển thị label video clip
 
 ### 5. Documentation
 - [x] [README.md](file:///c:/ae-tracking-video-app/README.md) — Hướng dẫn cài đặt chi tiết, kiến trúc, troubleshooting
@@ -62,18 +58,13 @@ Dự án **Lock-on Tracking + Speed Ramp** đa nền tảng, sử dụng AI Nano
 ### Desktop App — Tính năng còn thiếu
 
 #### Frontend (React)
-- [ ] **ROI Selection** — Chưa có UI để vẽ bounding box chọn đối tượng tracking ← **TIẾP THEO**
-- [ ] **Tracking Overlay** — Chưa render kết quả tracking (bounding box, crosshair) lên video
-- [ ] **Keyframe display** — Chưa hiển thị keyframes từ tracking data trên timeline
-- [ ] **Speed Ramp** — Chưa có UI/logic cho tính năng thay đổi tốc độ video
-- [ ] **Export** — Chưa có logic xuất video đã xử lý
+- [ ] **Keyframe display** — Chưa hiển thị tracking keyframes (đường di chuyển của đối tượng) trực tiếp lên Timeline
+- [ ] **Speed Ramp** — Chưa có UI Curve Editor để vẽ đường cong tốc độ video ← **TIẾP THEO**
+- [ ] **Export** — Chưa có logic xuất video đã xử lý + effects
 
 #### Backend (Rust/Tauri)
-- [ ] **Frame pipeline** — Chưa truyền frame data từ canvas → Rust → C++ tracker
-- [ ] **Tauri commands thiếu**:
-  - `start_tracking` — Bắt đầu tracking với ROI
-  - `export_video` — Xuất video với effects
-- [ ] **Tracking session management** — Chưa quản lý nhiều tracking sessions
+- [ ] **Export Video** — Tauri command để ghi video đã áp dụng tracking effect và speed ramp
+- [ ] **Tracking session management** — Cải thiện nếu muốn lưu/load nhiều project
 
 ### Mobile App
 - [ ] Chưa chọn framework (React Native hay Flutter)
@@ -86,40 +77,40 @@ Dự án **Lock-on Tracking + Speed Ramp** đa nền tảng, sử dụng AI Nano
 ```mermaid
 graph TB
     subgraph "✅ Hoàn thành"
-        A[Python Prototypes<br/>NanoTrack + Lock-on] 
-        B[Core C++ Engine<br/>tracking_core.dll]
-        C[Rust FFI Bridge<br/>libloading + C-ABI]
-        D[Design System<br/>CSS + DESIGN.md]
-        E[Video Pipeline<br/>Import + Player + Timeline]
-        F[Tauri Commands<br/>init_ai_engine + get_video_metadata]
+        A[Python Prototypes] 
+        B[Core C++ Engine]
+        C[Rust FFI Bridge]
+        D[Design System]
+        E[Video Pipeline + ROI Selection]
+        F[Tracking Integration<br/>Canvas → Rust → C++]
     end
     
     subgraph "🔨 Tiếp theo"
-        G[ROI Selection<br/>Vẽ bounding box]
-        H[Tracking Integration<br/>Canvas → Rust → C++]
+        G[Speed Ramp<br/>Curve Editor]
+        H[Export Engine]
     end
     
     subgraph "❌ Chưa có"
-        I[Speed Ramp]
-        J[Export Engine]
-        K[Mobile App]
+        I[Mobile App]
     end
     
-    B --> C --> F --> E
-    E --> G --> H --> B
+    B --> C --> E
+    E --> F --> B
+    F --> G --> H
 ```
 
 ---
 
 ## 🎯 Đề xuất bước tiếp theo (theo thứ tự ưu tiên)
 
-1. ~~**Video Pipeline** — Thêm video decoding~~ ✅ DONE
-2. ~~**Video Player** — Render video lên canvas~~ ✅ DONE
-3. **ROI Selection** — Cho phép user vẽ bounding box lên video canvas ← **ĐANG LÀM**
-4. **Tracking Integration** — Kết nối full pipeline: React → Tauri → C++ → kết quả → React overlay
-5. **Speed Ramp** — UI curve editor + logic thay đổi tốc độ
-6. **Export** — Xuất video với tracking effect + speed ramp
-7. **Mobile** — Sau khi Desktop hoàn thiện
+1. ~~**Video Pipeline**~~ ✅ DONE
+2. ~~**Video Player**~~ ✅ DONE
+3. ~~**ROI Selection**~~ ✅ DONE
+4. ~~**Tracking Integration**~~ ✅ DONE
+5. **Speed Ramp** — Xây dựng UI Curve Editor (biểu đồ tốc độ) dưới dạng track thứ 3 trên timeline để điều khiển `playbackRate`. ← **ĐANG CHUẨN BỊ**
+6. **Export** — Xuất video với tracking effect + speed ramp.
+7. **Mobile** — Sau khi Desktop hoàn thiện.
 
 > [!IMPORTANT]
-> Video Pipeline đã hoàn thành! Bước tiếp theo là **ROI Selection** để user có thể chọn đối tượng cần tracking trên video.
+> **Core Tracking Loop** đã hoàn thiện! Dữ liệu video đi từ React Canvas -> Tauri IPC -> Rust RGBA/RGB Convert -> C++ NanoTrack Tracker, trả về kết quả và render crosshair mượt mà. 
+> Bước tiếp theo là xây dựng **Speed Ramp Curve Editor**.
