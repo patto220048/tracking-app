@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
-import { MonitorPlay } from "lucide-react";
+import { MonitorPlay, Target } from "lucide-react";
 import { ROISelection } from "./ROISelection";
 import type { BoundingBox } from "./ROISelection";
+import type { TrackedPoint } from "../hooks/useTracking";
 
 interface VideoPlayerProps {
   videoRef: React.RefObject<HTMLVideoElement | null>;
@@ -12,6 +13,8 @@ interface VideoPlayerProps {
   videoHeight: number;
   isROIToolActive: boolean;
   currentROI: BoundingBox | null;
+  isTracking: boolean;
+  trackedPoint: TrackedPoint | null;
   onLoadedMetadata: () => void;
   onTimeUpdate: () => void;
   onEnded: () => void;
@@ -27,6 +30,8 @@ export function VideoPlayer({
   videoHeight,
   isROIToolActive,
   currentROI,
+  isTracking,
+  trackedPoint,
   onLoadedMetadata,
   onTimeUpdate,
   onEnded,
@@ -71,13 +76,29 @@ export function VideoPlayer({
           {/* ROI Selection overlay */}
           <ROISelection
             canvasRef={canvasRef}
-            isActive={isROIToolActive}
+            isActive={isROIToolActive && !isTracking}
             isLoaded={isLoaded}
             videoWidth={videoWidth}
             videoHeight={videoHeight}
             onROISelected={onROISelected}
             currentROI={currentROI}
           />
+          {/* Tracking Result Overlay */}
+          {isTracking && trackedPoint && (
+            <div 
+              className="tracking-point-overlay"
+              style={{
+                position: 'absolute',
+                top: `${(trackedPoint.y / videoHeight) * 100}%`,
+                left: `${(trackedPoint.x / videoWidth) * 100}%`,
+                transform: 'translate(-50%, -50%)',
+                pointerEvents: 'none',
+                zIndex: 10
+              }}
+            >
+              <Target size={24} color="#F44336" />
+            </div>
+          )}
         </>
       ) : (
         <div className="video-placeholder">

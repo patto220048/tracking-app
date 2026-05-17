@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { Plus, Settings2, Target, Crosshair, MousePointer2 } from "lucide-react";
 import { useVideoPlayer } from "./hooks/useVideoPlayer";
+import { useTracking } from "./hooks/useTracking";
 import { VideoPlayer } from "./components/VideoPlayer";
 import { PlayerControls } from "./components/PlayerControls";
 import { Timeline } from "./components/Timeline";
@@ -11,6 +12,13 @@ type ToolType = "select" | "crosshair";
 
 function App() {
   const player = useVideoPlayer();
+  const { isTracking, trackedPoint, startTracking } = useTracking(
+    player.videoRef,
+    player.canvasRef,
+    player.videoMeta?.width ?? 0,
+    player.videoMeta?.height ?? 0
+  );
+  
   const [activeTool, setActiveTool] = useState<ToolType>("crosshair");
   const [currentROI, setCurrentROI] = useState<BoundingBox | null>(null);
 
@@ -101,6 +109,8 @@ function App() {
               videoHeight={player.videoMeta?.height ?? 0}
               isROIToolActive={activeTool === "crosshair"}
               currentROI={currentROI}
+              isTracking={isTracking}
+              trackedPoint={trackedPoint}
               onLoadedMetadata={player.handleLoadedMetadata}
               onTimeUpdate={player.handleTimeUpdate}
               onEnded={player.handleEnded}
@@ -217,9 +227,14 @@ function App() {
             </ol>
             <button
               className="linear-btn-primary card-action-btn"
-              disabled={!player.isLoaded || !currentROI}
+              disabled={!player.isLoaded || !currentROI || isTracking}
+              onClick={() => {
+                if (currentROI && !isTracking) {
+                  startTracking(currentROI);
+                }
+              }}
             >
-              Start AI Tracking
+              {isTracking ? "Tracking..." : "Start AI Tracking"}
             </button>
           </div>
         </div>
