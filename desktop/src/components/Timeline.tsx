@@ -7,6 +7,7 @@ interface TimelineProps {
   isLoaded: boolean;
   videoMeta: VideoMeta | null;
   onSeek: (time: number) => void;
+  isLockOn?: boolean;
 }
 
 // Format thời gian cho ruler (MM:SS)
@@ -23,6 +24,7 @@ export function Timeline({
   isLoaded,
   videoMeta,
   onSeek,
+  isLockOn = false,
 }: TimelineProps) {
   const trackAreaRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -190,7 +192,20 @@ export function Timeline({
               <span>FX (Lock-on)</span>
             </div>
             <div className="track-content">
-              {/* FX clips sẽ được thêm khi tracking */}
+              {isLoaded && isLockOn && (
+                <div
+                  className="track-clip video-clip"
+                  style={{
+                    left: 0,
+                    right: 0,
+                    background: "linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(168, 85, 247, 0.1) 100%)",
+                    border: "1px solid rgba(168, 85, 247, 0.35)",
+                    color: "rgba(168, 85, 247, 0.9)",
+                  }}
+                >
+                  <span className="clip-name">Lock-on Stabilization</span>
+                </div>
+              )}
             </div>
           </div>
 

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Plus, Settings2, Target, Crosshair, MousePointer2 } from "lucide-react";
 import { useVideoPlayer } from "./hooks/useVideoPlayer";
 import { useTracking } from "./hooks/useTracking";
@@ -12,15 +12,42 @@ type ToolType = "select" | "crosshair";
 
 function App() {
   const player = useVideoPlayer();
-  const { isTracking, trackedPoint, startTracking } = useTracking(
+  const { isTracking, trackedPoint, trackingData, startTracking, stopTracking } = useTracking(
     player.videoRef,
     player.canvasRef,
     player.videoMeta?.width ?? 0,
-    player.videoMeta?.height ?? 0
+    player.videoMeta?.height ?? 0,
+    player.videoMeta?.fps ?? 30
   );
   
   const [activeTool, setActiveTool] = useState<ToolType>("crosshair");
   const [currentROI, setCurrentROI] = useState<BoundingBox | null>(null);
+  const [isLockOn, setIsLockOn] = useState(true);
+  const [lockOnZoom, setLockOnZoom] = useState(1.3);
+  const [viewportRatio, setViewportRatio] = useState<string>("original");
+
+  // Tự động nhận dạng tỷ lệ video (ngang, dọc, hoặc vuông) khi load video mới
+  useEffect(() => {
+    if (player.videoMeta && player.videoMeta.width > 0 && player.videoMeta.height > 0) {
+      const { width, height } = player.videoMeta;
+      if (width === height) {
+        setViewportRatio("1:1");
+      } else if (height > width) {
+        setViewportRatio("9:16");
+      } else {
+        setViewportRatio("16:9");
+      }
+    }
+  }, [player.videoMeta]);
+
+  // Tìm kiếm điểm tracking dựa trên currentTime khi playback bình thường
+  const playbackTrackedPoint = isTracking 
+    ? trackedPoint 
+    : trackingData.length > 0 
+      ? trackingData.reduce((prev, curr) => 
+          Math.abs(curr.time - player.currentTime) < Math.abs(prev.time - player.currentTime) ? curr : prev
+        ) 
+      : null;
 
   const handleROISelected = useCallback((roi: BoundingBox) => {
     setCurrentROI(roi);
@@ -110,7 +137,10 @@ function App() {
               isROIToolActive={activeTool === "crosshair"}
               currentROI={currentROI}
               isTracking={isTracking}
-              trackedPoint={trackedPoint}
+              trackedPoint={playbackTrackedPoint}
+              isLockOn={isLockOn}
+              lockOnZoom={lockOnZoom}
+              viewportRatio={viewportRatio}
               onLoadedMetadata={player.handleLoadedMetadata}
               onTimeUpdate={player.handleTimeUpdate}
               onEnded={player.handleEnded}
@@ -188,6 +218,22 @@ function App() {
             </div>
           )}
 
+          {/* Viewport Aspect Ratio */}
+          <div className="inspector-section">
+            <label className="inspector-label">Viewport Aspect Ratio</label>
+            <select
+              className="inspector-select"
+              value={viewportRatio}
+              onChange={(e) => setViewportRatio(e.target.value)}
+            >
+              <option value="original">Original (Auto)</option>
+              <option value="16:9">16:9 (Landscape)</option>
+              <option value="9:16">9:16 (Vertical/TikTok)</option>
+              <option value="1:1">1:1 (Square)</option>
+              <option value="4:3">4:3 (Classic)</option>
+            </select>
+          </div>
+
           {/* Tracking Engine */}
           <div className="inspector-section">
             <label className="inspector-label">Tracking Engine</label>
@@ -212,6 +258,39 @@ function App() {
               <span>Smooth</span>
               <span>Jittery</span>
             </div>
+          </div>
+
+          {/* Lock-on Target Effect */}
+          <div className="inspector-section" style={{ borderTop: "1px solid #282828", marginTop: "4px", paddingTop: "12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+              <input
+                type="checkbox"
+                id="lock-on-toggle"
+                checked={isLockOn}
+                onChange={(e) => setIsLockOn(e.target.checked)}
+                style={{ accentColor: "#5E6AD2", cursor: "pointer", width: "14px", height: "14px" }}
+              />
+              <label htmlFor="lock-on-toggle" style={{ cursor: "pointer", fontSize: "11px", fontWeight: 600, color: "#EEEEEE", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                Lock-on Preview
+              </label>
+            </div>
+            {isLockOn && (
+              <div style={{ marginTop: "12px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#888888", marginBottom: "4px" }}>
+                  <span>Stabilization Zoom</span>
+                  <span>{lockOnZoom.toFixed(1)}x</span>
+                </div>
+                <input
+                  type="range"
+                  min="1.0"
+                  max="2.0"
+                  step="0.1"
+                  value={lockOnZoom}
+                  onChange={(e) => setLockOnZoom(parseFloat(e.target.value))}
+                  style={{ width: "100%", accentColor: "#5E6AD2", height: "4px", backgroundColor: "#282828", borderRadius: "2px", appearance: "none", cursor: "pointer" }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Instructions Card */}
@@ -240,6 +319,25 @@ function App() {
         </div>
       </div>
 
+      {/* TRACKING PROGRESS MODAL */}
+      {isTracking && (
+        <div className="tracking-progress-overlay">
+          <div className="tracking-progress-modal">
+            <h3>Đang Tracking (AI NanoTrack)...</h3>
+            <div className="progress-bar-bg">
+              <div 
+                className="progress-bar-fill" 
+                style={{ width: `${player.duration > 0 ? Math.min(100, (player.currentTime / player.duration) * 100) : 0}%` }} 
+              />
+            </div>
+            <p>{player.duration > 0 ? Math.min(100, Math.round((player.currentTime / player.duration) * 100)) : 0}%</p>
+            <button className="linear-btn-secondary" onClick={stopTracking}>
+              Dừng (Cancel)
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ═══════════════ BOTTOM TIMELINE ═══════════════ */}
       <Timeline
         currentTime={player.currentTime}
@@ -247,6 +345,7 @@ function App() {
         isLoaded={player.isLoaded}
         videoMeta={player.videoMeta}
         onSeek={player.seek}
+        isLockOn={isLockOn}
       />
     </div>
   );

@@ -11,6 +11,7 @@ pub struct Point {
 
 pub struct TrackingBridge {
     lib: Library,
+    _dep_libs: Vec<Library>,
     tracker_ptr: *mut std::ffi::c_void,
 }
 
@@ -21,6 +22,26 @@ unsafe impl Sync for TrackingBridge {}
 impl TrackingBridge {
     pub fn new(dll_path: &str, backbone_path: &str, head_path: &str) -> Result<Self, String> {
         unsafe {
+            // Load OpenCV DLL trước tiên trên Windows để giải quyết vấn đề phụ thuộc (dependencies) của tracking_core.dll
+            let mut dep_libs = Vec::new();
+            #[cfg(target_os = "windows")]
+            {
+                let opencv_path = "C:/opencv/build/x64/vc16/bin/opencv_world4100.dll";
+                if std::path::Path::new(opencv_path).exists() {
+                    match Library::new(opencv_path) {
+                        Ok(dep) => {
+                            dep_libs.push(dep);
+                            println!("Loaded dependency OpenCV DLL: {}", opencv_path);
+                        }
+                        Err(e) => {
+                            println!("Warning: Failed to load OpenCV dependency DLL: {}", e);
+                        }
+                    }
+                } else {
+                    println!("Warning: OpenCV dependency DLL not found at: {}", opencv_path);
+                }
+            }
+
             let lib = Library::new(dll_path).map_err(|e| format!("Lỗi load DLL: {}", e))?;
             
             let create_tracker: Symbol<unsafe extern "C" fn(*const c_char, *const c_char) -> *mut std::ffi::c_void> = 
@@ -31,7 +52,7 @@ impl TrackingBridge {
             
             let tracker_ptr = create_tracker(c_backbone.as_ptr(), c_head.as_ptr());
             
-            Ok(TrackingBridge { lib, tracker_ptr })
+            Ok(TrackingBridge { lib, _dep_libs: dep_libs, tracker_ptr })
         }
     }
 

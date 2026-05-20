@@ -22,8 +22,20 @@ fn init_ai_engine(state: State<'_, AppState>) -> Result<String, String> {
     let dll_path = "../../core/build/Release/tracking_core.dll";
     let backbone = "../../scripts/models/nanotrack_backbone_sim.onnx";
     let head = "../../scripts/models/nanotrack_head_sim.onnx";
+
+    let dll_abs = std::fs::canonicalize(dll_path)
+        .map_err(|e| format!("Không tìm thấy file DLL tại '{}' (CWD: {:?}): {}", dll_path, std::env::current_dir(), e))?;
+    let dll_abs_str = dll_abs.to_string_lossy().replace("\\\\?\\", "");
+
+    let backbone_abs = std::fs::canonicalize(backbone)
+        .map_err(|e| format!("Không tìm thấy file backbone ONNX tại '{}': {}", backbone, e))?;
+    let backbone_abs_str = backbone_abs.to_string_lossy().replace("\\\\?\\", "");
+
+    let head_abs = std::fs::canonicalize(head)
+        .map_err(|e| format!("Không tìm thấy file head ONNX tại '{}': {}", head, e))?;
+    let head_abs_str = head_abs.to_string_lossy().replace("\\\\?\\", "");
     
-    match TrackingBridge::new(dll_path, backbone, head) {
+    match TrackingBridge::new(&dll_abs_str, &backbone_abs_str, &head_abs_str) {
         Ok(bridge) => {
             let mut tracker = state.tracker.lock().unwrap();
             *tracker = Some(bridge);

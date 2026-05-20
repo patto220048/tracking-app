@@ -35,39 +35,18 @@ export function ROISelection({
   const mouseToVideoCoords = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
       const overlay = overlayRef.current;
-      const videoCanvas = canvasRef.current;
-      if (!overlay || !videoCanvas || videoWidth === 0 || videoHeight === 0) return null;
+      if (!overlay || videoWidth === 0 || videoHeight === 0) return null;
 
       const overlayRect = overlay.getBoundingClientRect();
       const mouseX = e.clientX - overlayRect.left;
       const mouseY = e.clientY - overlayRect.top;
 
-      // Tính toán vùng video thực tế bên trong canvas (do object-fit: contain)
       const canvasDisplayW = overlayRect.width;
       const canvasDisplayH = overlayRect.height;
 
-      const videoAspect = videoWidth / videoHeight;
-      const canvasAspect = canvasDisplayW / canvasDisplayH;
-
-      let renderW: number, renderH: number, offsetX: number, offsetY: number;
-
-      if (videoAspect > canvasAspect) {
-        // Video rộng hơn → letterbox trên dưới
-        renderW = canvasDisplayW;
-        renderH = canvasDisplayW / videoAspect;
-        offsetX = 0;
-        offsetY = (canvasDisplayH - renderH) / 2;
-      } else {
-        // Video cao hơn → pillarbox trái phải
-        renderH = canvasDisplayH;
-        renderW = canvasDisplayH * videoAspect;
-        offsetX = (canvasDisplayW - renderW) / 2;
-        offsetY = 0;
-      }
-
-      // Chuyển sang tọa độ video gốc
-      const vx = ((mouseX - offsetX) / renderW) * videoWidth;
-      const vy = ((mouseY - offsetY) / renderH) * videoHeight;
+      // Chuyển trực tiếp sang tọa độ video gốc (tỉ lệ tuyến tính vì overlay khớp hoàn toàn với video)
+      const vx = (mouseX / canvasDisplayW) * videoWidth;
+      const vy = (mouseY / canvasDisplayH) * videoHeight;
 
       // Clamp vào trong video
       return {
@@ -75,7 +54,7 @@ export function ROISelection({
         y: Math.max(0, Math.min(videoHeight, vy)),
       };
     },
-    [canvasRef, videoWidth, videoHeight]
+    [videoWidth, videoHeight]
   );
 
   // Chuyển tọa độ video gốc → pixel trên overlay canvas
@@ -88,26 +67,9 @@ export function ROISelection({
       const canvasDisplayW = rect.width;
       const canvasDisplayH = rect.height;
 
-      const videoAspect = videoWidth / videoHeight;
-      const canvasAspect = canvasDisplayW / canvasDisplayH;
-
-      let renderW: number, renderH: number, offsetX: number, offsetY: number;
-
-      if (videoAspect > canvasAspect) {
-        renderW = canvasDisplayW;
-        renderH = canvasDisplayW / videoAspect;
-        offsetX = 0;
-        offsetY = (canvasDisplayH - renderH) / 2;
-      } else {
-        renderH = canvasDisplayH;
-        renderW = canvasDisplayH * videoAspect;
-        offsetX = (canvasDisplayW - renderW) / 2;
-        offsetY = 0;
-      }
-
       return {
-        x: (vx / videoWidth) * renderW + offsetX,
-        y: (vy / videoHeight) * renderH + offsetY,
+        x: (vx / videoWidth) * canvasDisplayW,
+        y: (vy / videoHeight) * canvasDisplayH,
       };
     },
     [videoWidth, videoHeight]

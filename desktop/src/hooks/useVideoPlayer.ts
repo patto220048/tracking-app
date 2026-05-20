@@ -156,21 +156,11 @@ export function useVideoPlayer() {
     if (!video || !videoSrc) return;
 
     if (video.paused) {
-      video.play();
-      setIsPlaying(true);
-      animFrameRef.current = requestAnimationFrame(renderFrame);
+      video.play().catch(err => console.error("Error playing video:", err));
     } else {
       video.pause();
-      setIsPlaying(false);
-      cancelAnimationFrame(animFrameRef.current);
-      // Render frame hiện tại lên canvas
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext("2d");
-        if (ctx) ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      }
     }
-  }, [videoSrc, renderFrame]);
+  }, [videoSrc]);
 
   // Stop
   const stop = useCallback(() => {
@@ -179,18 +169,7 @@ export function useVideoPlayer() {
 
     video.pause();
     video.currentTime = 0;
-    setIsPlaying(false);
     setCurrentTime(0);
-    cancelAnimationFrame(animFrameRef.current);
-
-    // Render frame đầu tiên
-    setTimeout(() => {
-      const canvas = canvasRef.current;
-      if (video && canvas) {
-        const ctx = canvas.getContext("2d");
-        if (ctx) ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      }
-    }, 50);
   }, []);
 
   // Seek
@@ -252,6 +231,42 @@ export function useVideoPlayer() {
     if (!ctx) return null;
     return ctx.getImageData(0, 0, canvas.width, canvas.height);
   }, []);
+
+  // Đồng bộ hóa vòng lặp renderFrame và trạng thái isPlaying theo sự kiện thực tế của video element
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handlePlay = () => {
+      setIsPlaying(true);
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = requestAnimationFrame(renderFrame);
+    };
+
+    const handlePause = () => {
+      setIsPlaying(false);
+      cancelAnimationFrame(animFrameRef.current);
+      // Khi tạm dừng, vẽ lại frame hiện tại lên canvas để hiển thị đúng vị trí dừng
+      const canvas = canvasRef.current;
+      if (canvas && videoRef.current) {
+        const ctx = canvas.getContext("2d");
+        if (ctx) ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+      }
+    };
+
+    video.addEventListener("play", handlePlay);
+    video.addEventListener("pause", handlePause);
+
+    // Kích hoạt ngay lập tức nếu video đang chạy (tránh lệch trạng thái ban đầu)
+    if (!video.paused) {
+      handlePlay();
+    }
+
+    return () => {
+      video.removeEventListener("play", handlePlay);
+      video.removeEventListener("pause", handlePause);
+    };
+  }, [videoSrc, isLoaded, renderFrame]);
 
   // Cleanup animation frame
   useEffect(() => {
